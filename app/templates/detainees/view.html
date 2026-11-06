@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Detainee Dossier - {{ detainee.full_name }}{% endblock %}
+{% block breadcrumb %}Custody Management / Detainee Profile{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <!-- Top Action Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+            <a href="{{ url_for('detainees.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Detainee List
+            </a>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print Inmate Sheet
+                </button>
+                {% if active_rec and current_user.has_role('Admin', 'SHO') %}
+                <form method="POST" action="{{ url_for('detainees.release', id=detainee.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Authorize release of {{ detainee.full_name }}?')">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Authorize Release from Custody
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Detainee Profile Sheet -->
+        <div class="card shadow-sm border p-4 p-md-5 bg-white mb-4">
+            <!-- Header -->
+            <div class="text-center pb-4 mb-4 border-bottom">
+                <div class="text-secondary small fw-bold text-uppercase" style="letter-spacing: 1.5px;">STATION CUSTODY COMMAND</div>
+                <h4 class="fw-bold text-dark mt-1 mb-0">LOCKUP INTAKE & DETENTION RECORD</h4>
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap gap-2">
+                    <span class="badge bg-danger fs-6">{{ detainee.full_name }}</span>
+                    {% if active_rec %}
+                    <span class="badge bg-danger fs-6"><i class="bi bi-lock-fill"></i> Held in Cell {{ active_rec.cell.cell_number }}</span>
+                    {% else %}
+                    <span class="badge bg-success fs-6"><i class="bi bi-check-circle"></i> Not in Custody</span>
+                    {% endif %}
+                    <span class="text-muted small">Age: {{ detainee.age }} &bull; Gender: {{ detainee.gender }}</span>
+                </div>
+            </div>
+
+            <!-- Bio Data -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-secondary small border-bottom pb-2">1. Person Identification</h6>
+                <div class="row g-2 small">
+                    <div class="col-sm-4 text-muted">Legal Full Name:</div>
+                    <div class="col-sm-8 fw-semibold">{{ detainee.full_name }}</div>
+
+                    <div class="col-sm-4 text-muted">Known Alias:</div>
+                    <div class="col-sm-8">{{ detainee.alias or 'None' }}</div>
+
+                    <div class="col-sm-4 text-muted">National Identification:</div>
+                    <div class="col-sm-8 font-monospace">{{ detainee.national_id or 'Not Specified' }}</div>
+
+                    <div class="col-sm-4 text-muted">Blood Group:</div>
+                    <div class="col-sm-8">{{ detainee.blood_group or 'N/A' }}</div>
+
+                    <div class="col-sm-4 text-muted">Emergency Contact:</div>
+                    <div class="col-sm-8">{{ detainee.emergency_contact or 'Unrecorded' }}</div>
+                </div>
+            </div>
+
+            <!-- Confiscated Property & Health -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-secondary small border-bottom pb-2">2. Confiscated Belongings & Medical Examination</h6>
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <div class="fw-semibold text-muted mb-1">Confiscated Personal Property (Property Room Locker):</div>
+                        <div class="p-2 bg-light rounded border text-dark font-monospace" style="white-space: pre-wrap;">{{ detainee.personal_belongings or 'No personal effects logged.' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fw-semibold text-muted mb-1">Health & Medical State at Booking:</div>
+                        <div class="p-2 bg-light rounded border text-dark font-monospace" style="white-space: pre-wrap;">{{ detainee.health_condition or 'Declared physically sound upon medical examination.' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detention History -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-secondary small border-bottom pb-2">3. Historical Custody Periods</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Arrest Time</th>
+                                <th>Cell</th>
+                                <th>Arresting Officer</th>
+                                <th>Detention Ground</th>
+                                <th>Status</th>
+                                <th>Release Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in records %}
+                            <tr>
+                                <td>{{ rec.arrest_date_time.strftime('%d %b %Y, %H:%M') }}</td>
+                                <td><span class="badge bg-dark">Cell {{ rec.cell.cell_number }}</span></td>
+                                <td>{{ rec.arresting_officer.full_name if rec.arresting_officer else '-' }}</td>
+                                <td class="small">{{ rec.detention_reason }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if rec.detention_status == 'In Custody' else 'success' }}">{{ rec.detention_status }}</span>
+                                </td>
+                                <td>{{ rec.release_date_time.strftime('%d %b %Y, %H:%M') if rec.release_date_time else 'In Lockup' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-3">No custody records found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

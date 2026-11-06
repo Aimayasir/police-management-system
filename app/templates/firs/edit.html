@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit FIR - {{ fir.fir_number }}{% endblock %}
+{% block breadcrumb %}FIR Management / Edit {{ fir.fir_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card table-card p-4">
+            <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+                <div>
+                    <h5 class="fw-bold mb-1 text-dark">Modify FIR Details: {{ fir.fir_number }}</h5>
+                    <p class="text-secondary small mb-0">Record adjustments will be audited with author timestamp.</p>
+                </div>
+                <a href="{{ url_for('firs.view', id=fir.id) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Cancel & View
+                </a>
+            </div>
+
+            <form method="POST" action="{{ url_for('firs.edit', id=fir.id) }}">
+                {{ form.hidden_tag() }}
+
+                <!-- Section 1: Police Station & Crime Classification -->
+                <div class="bg-light p-3 rounded-3 mb-4 border">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-shaded me-1"></i> 1. Station & Offense Classification</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Police Station</label>
+                            {{ form.station_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Crime Offense Type</label>
+                            {{ form.crime_type_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Assigned IO</label>
+                            {{ form.io_officer_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center pt-3">
+                            <div class="form-check">
+                                {{ form.is_cognizable(class="form-check-input") }}
+                                <label class="form-check-label small fw-semibold" for="{{ form.is_cognizable.id }}">
+                                    Cognizable Offense
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Complainant Information -->
+                <div class="bg-light p-3 rounded-3 mb-4 border">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-lines-fill me-1"></i> 2. Complainant / Informant Details</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Complainant Full Name</label>
+                            {{ form.complainant_name(class="form-control") }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Phone Number</label>
+                            {{ form.complainant_phone(class="form-control") }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Gender</label>
+                            {{ form.complainant_gender(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">National ID</label>
+                            {{ form.complainant_national_id(class="form-control") }}
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold">Residential Address</label>
+                            {{ form.complainant_address(class="form-control", rows="2") }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Incident Details -->
+                <div class="bg-light p-3 rounded-3 mb-4 border">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-geo-alt-fill me-1"></i> 3. Incident Location & Statement</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Incident Date & Time</label>
+                            {{ form.incident_date_time(class="form-control") }}
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-semibold">Place of Occurrence</label>
+                            {{ form.incident_location(class="form-control") }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Distance from Station</label>
+                            {{ form.distance_from_station(class="form-control") }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Statement of Facts</label>
+                            {{ form.incident_details(class="form-control", rows="5") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('firs.view', id=fir.id) }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-semibold shadow-sm">
+                        <i class="bi bi-check2 me-1"></i> Update FIR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results: "{{ query }}"{% endblock %}
+{% block breadcrumb %}Global Intelligence Search / Results{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h4 class="fw-bold mb-1 text-dark">
+                <i class="bi bi-search text-primary me-2"></i>Global Search Results
+            </h4>
+            <p class="text-secondary small mb-0">
+                Found <strong>{{ total_matches }}</strong> matching records across FIRs, cases, accused suspects, citizens, and police personnel for <span class="badge bg-light text-dark border">"{{ query }}"</span>
+            </p>
+        </div>
+        <div style="min-width: 320px;">
+            <form action="{{ url_for('main.search') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="q" class="form-control form-control-sm" value="{{ query }}" placeholder="Search FIR #, CNIC, Case #, Name..." required>
+                <button type="submit" class="btn btn-primary btn-sm px-3">Search</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Category Tabs -->
+<ul class="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm border" id="searchTabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link {% if active_tab == 'all' %}active{% endif %}" id="all-tab" data-bs-toggle="pill" data-bs-target="#all-pane" type="button">
+            All Matches <span class="badge bg-secondary ms-1">{{ total_matches }}</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="firs-tab" data-bs-toggle="pill" data-bs-target="#firs-pane" type="button">
+            FIRs <span class="badge bg-primary ms-1">{{ results.firs|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="cases-tab" data-bs-toggle="pill" data-bs-target="#cases-pane" type="button">
+            Cases <span class="badge bg-warning text-dark ms-1">{{ results.cases|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="accused-tab" data-bs-toggle="pill" data-bs-target="#accused-pane" type="button">
+            Accused Suspects <span class="badge bg-danger ms-1">{{ results.accused|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="detainees-tab" data-bs-toggle="pill" data-bs-target="#detainees-pane" type="button">
+            Detainees in Lockup <span class="badge bg-dark ms-1">{{ results.detainees|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="officers-tab" data-bs-toggle="pill" data-bs-target="#officers-pane" type="button">
+            Police Officers <span class="badge bg-info ms-1">{{ results.officers|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="citizens-tab" data-bs-toggle="pill" data-bs-target="#citizens-pane" type="button">
+            Complainants & Victims <span class="badge bg-secondary ms-1">{{ results.complainants|length + results.victims|length }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="searchTabContent">
+    <!-- ALL PANE -->
+    <div class="tab-pane fade {% if active_tab == 'all' %}show active{% endif %}" id="all-pane" role="tabpanel">
+        {% if total_matches == 0 %}
+        <div class="text-center py-5 card border-0 shadow-sm">
+            <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+            <h5 class="mt-3 text-secondary">No records matched your search query</h5>
+            <p class="text-muted small">Try searching by partial name, CNIC (e.g. 35201), FIR number (e.g. FIR-2026), or Case number.</p>
+        </div>
+        {% else %}
+
+        <!-- FIRs Section -->
+        {% if results.firs %}
+        <div class="card table-card shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-file-earmark-text me-2"></i>First Information Reports (FIRs)</h6>
+                <span class="badge bg-primary">{{ results.firs|length }} found</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>FIR Number</th>
+                            <th>Crime Type</th>
+                            <th>Complainant</th>
+                            <th>Incident Date</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fir in results.firs %}
+                        <tr>
+                            <td class="fw-bold">{{ fir.fir_number }}</td>
+                            <td><span class="badge bg-secondary">{{ fir.crime_type.name if fir.crime_type else 'N/A' }}</span></td>
+                            <td>{{ fir.complainant.full_name if fir.complainant else 'State' }}</td>
+                            <td>{{ fir.incident_date_time.strftime('%d-%b-%Y') if fir.incident_date_time else '-' }}</td>
+                            <td class="small">{{ fir.incident_location }}</td>
+                            <td><span class="badge bg-info">{{ fir.status_rel.name if fir.status_rel else 'Active' }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_for('firs.view', id=fir.id) }}" class="btn btn-sm btn-outline-primary">View FIR</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Cases Section -->
+        {% if results.cases %}
+        <div class="card table-card shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-warning text-dark"><i class="bi bi-briefcase me-2"></i>Investigation Cases</h6>
+                <span class="badge bg-warning text-dark">{{ results.cases|length }} found</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Case Number</th>
+                            <th>Title</th>
+                            <th>Lead Investigator</th>
+                            <th>Status</th>
+                            <th>Opened Date</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in results.cases %}
+                        <tr>
+                            <td class="fw-bold">{{ c.case_number }}</td>
+                            <td>{{ c.case_title }}</td>
+                            <td>{{ c.lead_investigator.full_name if c.lead_investigator else 'Unassigned' }}</td>
+                            <td><span class="badge bg-primary">{{ c.case_status }}</span></td>
+                            <td>{{ c.date_opened.strftime('%d-%b-%Y') if c.date_opened else '-' }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('cases.view', id=c.id) }}" class="btn btn-sm btn-outline-warning">View Case</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Accused Section -->
+        {% if results.accused %}
+        <div class="card table-card shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-person-x me-2"></i>Accused Suspects & Criminal Records</h6>
+                <span class="badge bg-danger">{{ results.accused|length }} found</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Suspect Name</th>
+                            <th>Father Name</th>
+                            <th>CNIC</th>
+                            <th>Gender / Age</th>
+                            <th>Address</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in results.accused %}
+                        <tr>
+                            <td class="fw-bold text-danger">{{ a.full_name }} {% if a.alias %}<span class="text-muted small">({{ a.alias }})</span>{% endif %}</td>
+                            <td>{{ a.gender }}</td>
+                            <td><code>{{ a.national_id or 'N/A' }}</code></td>
+                            <td>{{ a.gender }}</td>
+                            <td class="small">{{ a.address or '-' }}</td>
+                            <td><span class="badge bg-secondary">{{ a.status or 'Active' }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Detainees Section -->
+        {% if results.detainees %}
+        <div class="card table-card shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-person-slash me-2"></i>Lockup Detainees</h6>
+                <span class="badge bg-dark">{{ results.detainees|length }} found</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Detainee Name</th>
+                            <th>Alias</th>
+                            <th>CNIC / ID</th>
+                            <th>Age / Gender</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in results.detainees %}
+                        <tr>
+                            <td class="fw-bold">{{ d.full_name }}</td>
+                            <td>{{ d.alias or '-' }}</td>
+                            <td><code>{{ d.national_id or 'N/A' }}</code></td>
+                            <td>{{ d.age }} yrs / {{ d.gender }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('detainees.view', id=d.id) }}" class="btn btn-sm btn-outline-dark">Lockup Record</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Officers Section -->
+        {% if results.officers %}
+        <div class="card table-card shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-info"><i class="bi bi-person-badge me-2"></i>Police Personnel</h6>
+                <span class="badge bg-info">{{ results.officers|length }} found</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Badge Number</th>
+                            <th>Officer Name</th>
+                            <th>Rank</th>
+                            <th>Contact Phone</th>
+                            <th>Duty Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for off in results.officers %}
+                        <tr>
+                            <td class="fw-bold"><span class="badge bg-dark">{{ off.badge_number }}</span></td>
+                            <td>{{ off.full_name }}</td>
+                            <td>{{ off.rank.name if off.rank else '-' }}</td>
+                            <td>{{ off.contact_phone }}</td>
+                            <td><span class="badge bg-success">{{ off.current_status }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_for('officers.view', id=off.id) }}" class="btn btn-sm btn-outline-info">Profile</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% endif %}
+    </div>
+
+    <!-- FIRs PANE -->
+    <div class="tab-pane fade" id="firs-pane" role="tabpanel">
+        <!-- Render FIRs -->
+        {% if results.firs %}
+        <div class="card table-card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>FIR Number</th>
+                            <th>Crime Type</th>
+                            <th>Complainant</th>
+                            <th>Incident Date</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fir in results.firs %}
+                        <tr>
+                            <td class="fw-bold">{{ fir.fir_number }}</td>
+                            <td><span class="badge bg-secondary">{{ fir.crime_type.name if fir.crime_type else 'N/A' }}</span></td>
+                            <td>{{ fir.complainant.full_name if fir.complainant else 'State' }}</td>
+                            <td>{{ fir.incident_date_time.strftime('%d-%b-%Y') if fir.incident_date_time else '-' }}</td>
+                            <td class="small">{{ fir.incident_location }}</td>
+                            <td><span class="badge bg-info">{{ fir.status_rel.name if fir.status_rel else 'Active' }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_for('firs.view', id=fir.id) }}" class="btn btn-sm btn-outline-primary">View FIR</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted p-4 text-center">No FIRs match the search query.</p>
+        {% endif %}
+    </div>
+
+    <!-- CASES PANE -->
+    <div class="tab-pane fade" id="cases-pane" role="tabpanel">
+        {% if results.cases %}
+        <div class="card table-card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Case Number</th>
+                            <th>Title</th>
+                            <th>Lead Investigator</th>
+                            <th>Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in results.cases %}
+                        <tr>
+                            <td class="fw-bold">{{ c.case_number }}</td>
+                            <td>{{ c.case_title }}</td>
+                            <td>{{ c.lead_investigator.full_name if c.lead_investigator else 'Unassigned' }}</td>
+                            <td><span class="badge bg-primary">{{ c.case_status }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_for('cases.view', id=c.id) }}" class="btn btn-sm btn-outline-warning">View Case</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted p-4 text-center">No Cases match the search query.</p>
+        {% endif %}
+    </div>
+
+    <!-- ACCUSED PANE -->
+    <div class="tab-pane fade" id="accused-pane" role="tabpanel">
+        {% if results.accused %}
+        <div class="card table-card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Suspect Name</th>
+                            <th>Father Name</th>
+                            <th>CNIC</th>
+                            <th>Gender / Age</th>
+                            <th>Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in results.accused %}
+                        <tr>
+                            <td class="fw-bold text-danger">{{ a.full_name }}</td>
+                            <td>{{ a.gender }}</td>
+                            <td><code>{{ a.national_id or 'N/A' }}</code></td>
+                            <td>{{ a.gender }}</td>
+                            <td>{{ a.address or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted p-4 text-center">No accused suspects match the search query.</p>
+        {% endif %}
+    </div>
+
+    <!-- DETAINEES PANE -->
+    <div class="tab-pane fade" id="detainees-pane" role="tabpanel">
+        {% if results.detainees %}
+        <div class="card table-card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Detainee Name</th>
+                            <th>Alias</th>
+                            <th>CNIC / ID</th>
+                            <th>Age / Gender</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in results.detainees %}
+                        <tr>
+                            <td class="fw-bold">{{ d.full_name }}</td>
+                            <td>{{ d.alias or '-' }}</td>
+                            <td><code>{{ d.national_id or 'N/A' }}</code></td>
+                            <td>{{ d.age }} yrs / {{ d.gender }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('detainees.view', id=d.id) }}" class="btn btn-sm btn-outline-dark">Lockup Record</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted p-4 text-center">No detainees match the search query.</p>
+        {% endif %}
+    </div>
+
+    <!-- OFFICERS PANE -->
+    <div class="tab-pane fade" id="officers-pane" role="tabpanel">
+        {% if results.officers %}
+        <div class="card table-card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Badge Number</th>
+                            <th>Officer Name</th>
+                            <th>Rank</th>
+                            <th>Phone</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for off in results.officers %}
+                        <tr>
+                            <td class="fw-bold">{{ off.badge_number }}</td>
+                            <td>{{ off.full_name }}</td>
+                            <td>{{ off.rank.name if off.rank else '-' }}</td>
+                            <td>{{ off.contact_phone }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('officers.view', id=off.id) }}" class="btn btn-sm btn-outline-info">Profile</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted p-4 text-center">No officers match the search query.</p>
+        {% endif %}
+    </div>
+
+    <!-- CITIZENS PANE -->
+    <div class="tab-pane fade" id="citizens-pane" role="tabpanel">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card table-card shadow-sm h-100">
+                    <div class="card-header bg-white py-2 fw-bold text-secondary">Complainants</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr><th>Name</th><th>CNIC</th><th>Phone</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for c in results.complainants %}
+                                <tr>
+                                    <td class="fw-bold">{{ c.full_name }}</td>
+                                    <td><code>{{ c.national_id or '-' }}</code></td>
+                                    <td>{{ c.phone }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="3" class="text-center text-muted">No complainants found</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card table-card shadow-sm h-100">
+                    <div class="card-header bg-white py-2 fw-bold text-secondary">Victims</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr><th>Name</th><th>CNIC</th><th>Phone/Gender</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for v in results.victims %}
+                                <tr>
+                                    <td class="fw-bold">{{ v.full_name }}</td>
+                                    <td><code>{{ v.national_id or '-' }}</code></td>
+                                    <td>{{ v.phone or v.gender }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="3" class="text-center text-muted">No victims found</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

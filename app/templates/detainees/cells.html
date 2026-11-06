@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Lockup Cells Status{% endblock %}
+{% block breadcrumb %}Custody Management / Lockup Holding Cells{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Station Holding Cells & Capacity Overview</h4>
+        <p class="text-secondary small mb-0">Live occupancy monitoring, segregation standards, and security tier status.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('detainees.index') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Detainee Register
+        </a>
+        {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+        <a href="{{ url_for('detainees.create') }}" class="btn btn-danger btn-sm">
+            <i class="bi bi-person-slash"></i> Book Detainee
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for cell in cells %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card table-card h-100 p-3">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge bg-dark font-monospace fs-6">Cell {{ cell.cell_number }}</span>
+                    <h6 class="fw-bold text-dark mt-2 mb-0">{{ cell.cell_name }}</h6>
+                </div>
+                <span class="badge bg-{{ 'danger' if cell.security_level == 'Maximum' else ('warning text-dark' if cell.security_level == 'High' else 'secondary') }}">
+                    {{ cell.security_level }} Security
+                </span>
+            </div>
+
+            <div class="small text-muted mb-3">
+                Classification: <strong>{{ cell.cell_type }} Cell</strong> &bull; Station: {{ cell.station.name if cell.station else 'Central Station' }}
+            </div>
+
+            <!-- Occupancy Progress -->
+            <div class="mb-3">
+                <div class="d-flex justify-content-between small fw-semibold mb-1">
+                    <span>Occupancy</span>
+                    <span>{{ cell.current_occupancy }} / {{ cell.capacity }} Inmates</span>
+                </div>
+                {% set pct = (cell.current_occupancy / cell.capacity * 100)|round|int %}
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar bg-{{ 'danger' if pct >= 100 else ('warning' if pct >= 75 else 'success') }}" 
+                         role="progressbar" style="width: {{ pct }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+
+            <div class="small border-top pt-2 text-muted d-flex justify-content-between">
+                <span>Condition: <strong>{{ cell.cell_condition }}</strong></span>
+                {% if cell.current_occupancy >= cell.capacity %}
+                <span class="badge bg-danger">FULL CAPACITY</span>
+                {% else %}
+                <span class="badge bg-success">{{ cell.capacity - cell.current_occupancy }} Vacancies</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center text-muted py-5">No lockup cells registered in the station configuration.</div>
+    {% endfor %}
+</div>
+{% endblock %}

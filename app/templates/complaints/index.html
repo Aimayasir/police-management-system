@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Citizen Complaints{% endblock %}
+{% block breadcrumb %}Public Desk / Citizen Complaints & Grievances{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Public Desk & Citizen Grievances</h4>
+        <p class="text-secondary small mb-0">Petitions, neighborhood disputes, noise complaints, and non-FIR citizen grievances.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.complaints_csv') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+        </a>
+        <a href="{{ url_for('complaints.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-megaphone-fill"></i> Lodge New Complaint
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('complaints.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search complaint #, citizen, subject..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select form-select-sm">
+                <option value="">All Resolution Statuses</option>
+                {% for st in status_options %}
+                <option value="{{ st }}" {% if current_status == st %}selected{% endif %}>{{ st }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="priority" class="form-select form-select-sm">
+                <option value="">All Priorities</option>
+                {% for pr in priority_options %}
+                <option value="{{ pr }}" {% if current_priority == pr %}selected{% endif %}>{{ pr }} Priority</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            {% if search or current_status or current_priority %}
+            <a href="{{ url_for('complaints.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Complaints Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Complaint #</th>
+                    <th>Citizen Informant</th>
+                    <th>Subject of Grievance</th>
+                    <th>Date Lodged</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in pagination.items %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('complaints.view', id=c.id) }}" class="fw-bold text-decoration-none text-primary">
+                            {{ c.complaint_number }}
+                        </a>
+                    </td>
+                    <td>
+                        <div class="fw-semibold small">{{ c.citizen_name }}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ c.citizen_phone }}</div>
+                    </td>
+                    <td>
+                        <div class="small fw-semibold text-truncate" style="max-width: 240px;">{{ c.subject }}</div>
+                        <div class="text-muted text-truncate" style="max-width: 240px; font-size: 0.72rem;">{{ c.description }}</div>
+                    </td>
+                    <td class="small">{{ c.complaint_date.strftime('%d %b %Y') }}</td>
+                    <td>
+                        {% set p_badge = 'danger' if c.priority == 'Urgent' else ('warning text-dark' if c.priority == 'High' else ('info text-dark' if c.priority == 'Medium' else 'secondary')) %}
+                        <span class="badge bg-{{ p_badge }}">{{ c.priority }}</span>
+                    </td>
+                    <td>
+                        {% set s_badge = 'warning text-dark' if c.resolution_status == 'Pending' else ('info text-dark' if c.resolution_status == 'Under Inquiry' else ('success' if c.resolution_status == 'Resolved' else 'secondary')) %}
+                        <span class="badge bg-{{ s_badge }}">{{ c.resolution_status }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('complaints.view', id=c.id) }}" class="btn btn-light border" title="View & Process">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if current_user.has_role('Admin', 'SHO') %}
+                            <button type="button" class="btn btn-light border text-danger" title="Soft Delete" data-bs-toggle="modal" data-bs-target="#deleteComplaintModal{{ c.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        {% if current_user.has_role('Admin', 'SHO') %}
+                        <div class="modal fade text-start" id="deleteComplaintModal{{ c.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Soft Delete Complaint</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete complaint <strong>{{ c.complaint_number }}</strong>?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('complaints.delete', id=c.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Soft Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No citizen complaints recorded.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+{% endblock %}

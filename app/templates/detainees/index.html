@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block title %}Lockup & Detainees{% endblock %}
+{% block breadcrumb %}Custody Management / Detainees Registry{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Lockup Custody & Detainee Management</h4>
+        <p class="text-secondary small mb-0">Statutory tracking of arrested individuals, holding cells, medical examinations, and bail releases.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('detainees.cells') }}" class="btn btn-outline-info text-dark btn-sm">
+            <i class="bi bi-grid-3x3"></i> Lockup Cells Status
+        </a>
+        <a href="{{ url_for('reports.detainees_pdf') }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf"></i> Custody PDF
+        </a>
+        <a href="{{ url_for('reports.detainees_csv') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+        </a>
+        {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+        <a href="{{ url_for('detainees.create') }}" class="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-person-slash"></i> Book New Detainee
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search & Status Filter -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('detainees.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search detainee name, alias, ID..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="status" class="form-select form-select-sm">
+                <option value="ALL">All Custody Statuses</option>
+                <option value="In Custody" {% if current_status == 'In Custody' %}selected{% endif %}>In Custody (Active Lockup)</option>
+                <option value="Released" {% if current_status == 'Released' %}selected{% endif %}>Released</option>
+                <option value="Remanded to Judicial" {% if current_status == 'Remanded to Judicial' %}selected{% endif %}>Remanded to Judicial Prison</option>
+                <option value="Hospitalized" {% if current_status == 'Hospitalized' %}selected{% endif %}>Hospitalized</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            {% if search or current_status != 'In Custody' %}
+            <a href="{{ url_for('detainees.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Detainees Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Detainee Name</th>
+                    <th>Age / Gender</th>
+                    <th>Lockup Cell</th>
+                    <th>Arrest Date & Time</th>
+                    <th>Arresting Officer</th>
+                    <th>Custody Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in pagination.items %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('detainees.view', id=record.detainee.id) }}" class="fw-bold text-decoration-none text-dark">
+                            {{ record.detainee.full_name }}
+                        </a>
+                        {% if record.detainee.alias %}
+                        <span class="text-muted small">({{ record.detainee.alias }})</span>
+                        {% endif %}
+                        <div class="text-muted" style="font-size: 0.72rem;">ID: {{ record.detainee.national_id or 'Unrecorded' }}</div>
+                    </td>
+                    <td>
+                        <span class="small">{{ record.detainee.age }} yrs / {{ record.detainee.gender }}</span>
+                        <div class="text-muted" style="font-size: 0.72rem;">Blood: {{ record.detainee.blood_group or 'N/A' }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-dark">
+                            <i class="bi bi-door-closed me-1"></i> Cell {{ record.cell.cell_number if record.cell else 'N/A' }}
+                        </span>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ record.cell.cell_name if record.cell else '' }}</div>
+                    </td>
+                    <td>
+                        <div class="small fw-semibold">{{ record.arrest_date_time.strftime('%d %b %Y, %H:%M') }}</div>
+                        <div class="text-truncate text-muted" style="max-width: 180px; font-size: 0.75rem;">{{ record.detention_reason }}</div>
+                    </td>
+                    <td>
+                        <div class="small">{{ record.arresting_officer.full_name if record.arresting_officer else 'Officer' }}</div>
+                        <span class="text-muted" style="font-size: 0.72rem;">{{ record.arresting_officer.badge_number if record.arresting_officer else '' }}</span>
+                    </td>
+                    <td>
+                        {% set cust_badge = 'danger' if record.detention_status == 'In Custody' else ('success' if record.detention_status == 'Released' else 'warning text-dark') %}
+                        <span class="badge bg-{{ cust_badge }}">{{ record.detention_status }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('detainees.view', id=record.detainee.id) }}" class="btn btn-light border" title="View Booking File">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if record.detention_status == 'In Custody' and current_user.has_role('Admin', 'SHO') %}
+                            <form method="POST" action="{{ url_for('detainees.release', id=record.detainee.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-light border text-success" title="Release from Lockup" onclick="return confirm('Authorize release of {{ record.detainee.full_name }}?')">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if current_user.has_role('Admin', 'SHO') %}
+                            <button type="button" class="btn btn-light border text-danger" title="Soft Delete" data-bs-toggle="modal" data-bs-target="#deleteDetaineeModal{{ record.detainee.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        {% if current_user.has_role('Admin', 'SHO') %}
+                        <div class="modal fade text-start" id="deleteDetaineeModal{{ record.detainee.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Soft Delete Detainee File</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete record for <strong>{{ record.detainee.full_name }}</strong>?<br>
+                                        <span class="text-muted small">Detention timestamps and personal property records will be preserved in audit trail.</span>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('detainees.delete', id=record.detainee.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Soft Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No detainee records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+{% endblock %}

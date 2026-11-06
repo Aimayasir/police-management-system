@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Evidence Locker{% endblock %}
+{% block breadcrumb %}Evidence Management / Seized Property Locker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Evidence Room & Forensic Seizure Vault</h4>
+        <p class="text-secondary small mb-0">Chain-of-custody tracking for biological, ballistic, physical, and digital evidence.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.evidence_csv') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+        </a>
+        {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+        <a href="{{ url_for('evidence.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-box-seam"></i> Log New Evidence
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('evidence.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search item, barcode, evidence #..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="type_id" class="form-select form-select-sm">
+                <option value="0">All Evidence Types</option>
+                {% for et in evidence_types %}
+                <option value="{{ et.id }}" {% if type_id == et.id %}selected{% endif %}>{{ et.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select form-select-sm">
+                <option value="">All Custody Statuses</option>
+                {% for st in status_options %}
+                <option value="{{ st }}" {% if current_status == st %}selected{% endif %}>{{ st }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            {% if search or type_id or current_status %}
+            <a href="{{ url_for('evidence.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Evidence Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Evidence # / Barcode</th>
+                    <th>Item Description</th>
+                    <th>Category</th>
+                    <th>Linked Case / FIR</th>
+                    <th>Seized By Officer</th>
+                    <th>Current Storage</th>
+                    <th>Chain Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in pagination.items %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('evidence.view', id=item.id) }}" class="fw-bold text-decoration-none text-primary">
+                            {{ item.evidence_number }}
+                        </a>
+                        <div class="font-monospace text-muted small" style="font-size: 0.72rem;">{{ item.barcode or 'NO-BARCODE' }}</div>
+                    </td>
+                    <td>
+                        <div class="fw-semibold small text-truncate" style="max-width: 200px;">{{ item.item_name }}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ item.condition_description or 'Fair condition' }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">{{ item.evidence_type.name }}</span>
+                    </td>
+                    <td>
+                        {% if item.case %}
+                        <a href="{{ url_for('cases.view', id=item.case.id) }}" class="small text-decoration-none">
+                            {{ item.case.case_number }}
+                        </a>
+                        {% elif item.fir %}
+                        <a href="{{ url_for('firs.view', id=item.fir.id) }}" class="small text-decoration-none">
+                            {{ item.fir.fir_number }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted small">Unlinked</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="small">{{ item.collected_by.full_name if item.collected_by else 'Officer' }}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ item.collected_at_datetime.strftime('%d %b %Y') }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            <i class="bi bi-geo-alt me-1 text-primary"></i>{{ item.current_storage_location }}
+                        </span>
+                    </td>
+                    <td>
+                        {% set st_badge = 'info text-dark' if item.chain_of_custody_status == 'In Locker' else ('warning text-dark' if item.chain_of_custody_status == 'In Forensics' else ('primary' if item.chain_of_custody_status == 'In Court' else 'success')) %}
+                        <span class="badge bg-{{ st_badge }}">{{ item.chain_of_custody_status }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('evidence.view', id=item.id) }}" class="btn btn-light border" title="View Chain of Custody">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if current_user.has_role('Admin', 'SHO') %}
+                            <button type="button" class="btn btn-light border text-danger" title="Soft Delete" data-bs-toggle="modal" data-bs-target="#deleteEvidenceModal{{ item.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        {% if current_user.has_role('Admin', 'SHO') %}
+                        <div class="modal fade text-start" id="deleteEvidenceModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Soft Delete Evidence Item</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete Evidence <strong>{{ item.evidence_number }}</strong> ({{ item.item_name }})?<br>
+                                        <span class="text-muted small">Chain of custody logs will remain cataloged in the audit store.</span>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('evidence.delete', id=item.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Soft Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">No evidence items match your query.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+{% endblock %}

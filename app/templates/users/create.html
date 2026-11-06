@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'Edit User' if user else 'Create User' }}{% endblock %}
+{% block breadcrumb %}System Administration / {{ 'Edit User' if user else 'New User Account' }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card table-card p-4">
+            <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+                <div>
+                    <h5 class="fw-bold mb-1 text-dark">{{ 'Edit User Profile: ' + user.username if user else 'Create System User Account' }}</h5>
+                    <p class="text-secondary small mb-0">Role assignment controls station authorization and menu access.</p>
+                </div>
+                <a href="{{ url_for('users.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Users
+                </a>
+            </div>
+
+            <form method="POST" action="{{ url_for('users.edit', id=user.id) if user else url_for('users.create') }}">
+                {{ form.hidden_tag() }}
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Username *</label>
+                        {{ form.username(class="form-control", placeholder="e.g. insp_tariq") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Official Email *</label>
+                        {{ form.email(class="form-control", placeholder="e.g. officer@punjabpolice.gov.pk") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Full Legal Name *</label>
+                        {{ form.full_name(class="form-control", placeholder="e.g. Tariq Mahmood") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Badge Number</label>
+                        {{ form.badge_number(class="form-control", placeholder="e.g. LHR-PS-7821") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">System Role *</label>
+                        {{ form.role_id(class="form-select") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Police Station Command</label>
+                        {{ form.station_id(class="form-select") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Contact Phone</label>
+                        {{ form.phone(class="form-control", placeholder="+92 300 1234567") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">
+                            {{ 'Reset Password (optional)' if user else 'Password (default: admin123)' }}
+                        </label>
+                        {{ form.password(class="form-control", placeholder="••••••••") }}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-2">
+                    <a href="{{ url_for('users.index') }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-semibold shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i> Save User Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Complaint {{ complaint.complaint_number }}{% endblock %}
+{% block breadcrumb %}Public Desk / Complaint {{ complaint.complaint_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <!-- Top Action Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+            <a href="{{ url_for('complaints.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Complaints
+            </a>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print Grievance Slip
+                </button>
+            </div>
+        </div>
+
+        <!-- Complaint Sheet -->
+        <div class="card shadow-sm border p-4 bg-white mb-4">
+            <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3 flex-wrap gap-2">
+                <div>
+                    <span class="badge bg-dark fs-6">{{ complaint.complaint_number }}</span>
+                    <h4 class="fw-bold text-dark mt-2 mb-1">{{ complaint.subject }}</h4>
+                    <span class="text-muted small">Lodged on {{ complaint.complaint_date.strftime('%d %B %Y at %H:%M') }}</span>
+                </div>
+                <div class="text-end">
+                    {% set p_badge = 'danger' if complaint.priority == 'Urgent' else ('warning text-dark' if complaint.priority == 'High' else 'info text-dark') %}
+                    <span class="badge bg-{{ p_badge }} px-3 py-1 fs-6">{{ complaint.priority }} Priority</span>
+                    <div class="mt-2">
+                        <span class="badge bg-secondary">{{ complaint.resolution_status }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Citizen Informant Box -->
+            <div class="bg-light p-3 rounded border mb-4">
+                <h6 class="fw-bold text-secondary small text-uppercase mb-2"><i class="bi bi-person-circle me-1"></i> Complainant Information</h6>
+                <div class="row g-2 small">
+                    <div class="col-sm-3 text-muted">Citizen Name:</div>
+                    <div class="col-sm-9 fw-semibold">{{ complaint.citizen_name }}</div>
+
+                    <div class="col-sm-3 text-muted">Phone:</div>
+                    <div class="col-sm-9">{{ complaint.citizen_phone }}</div>
+
+                    <div class="col-sm-3 text-muted">Email:</div>
+                    <div class="col-sm-9">{{ complaint.citizen_email or 'Not Provided' }}</div>
+
+                    <div class="col-sm-3 text-muted">Address:</div>
+                    <div class="col-sm-9">{{ complaint.citizen_address }}</div>
+                </div>
+            </div>
+
+            <!-- Grievance Statement -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-secondary small text-uppercase border-bottom pb-2">Full Statement of Grievance</h6>
+                <div class="p-3 bg-light rounded border text-dark lh-base font-monospace small" style="white-space: pre-wrap;">{{ complaint.description }}</div>
+            </div>
+
+            <!-- Resolution Notes -->
+            {% if complaint.resolution_notes %}
+            <div class="mb-4">
+                <h6 class="fw-bold text-success small text-uppercase border-bottom pb-2"><i class="bi bi-check-circle-fill me-1"></i> Inquiry & Resolution Findings</h6>
+                <div class="p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded small text-dark lh-base">
+                    {{ complaint.resolution_notes }}
+                    <div class="text-muted small mt-2">
+                        Resolved on: {{ complaint.resolved_at.strftime('%d %b %Y, %H:%M') if complaint.resolved_at else '' }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Police Action & Status Update Form -->
+            {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+            <div class="border-top pt-4 no-print">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-arrow-repeat me-1"></i> Update Inquiry Status & Resolution</h6>
+                <form method="POST" action="{{ url_for('complaints.update_status', id=complaint.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Assign Inquiry Officer</label>
+                            <select name="assigned_officer_id" class="form-select">
+                                <option value="0">-- Unassigned --</option>
+                                {% for off in officers %}
+                                <option value="{{ off.id }}" {% if complaint.assigned_officer_id == off.id %}selected{% endif %}>
+                                    {{ off.badge_number }} - {{ off.full_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Resolution Status *</label>
+                            <select name="resolution_status" class="form-select" required>
+                                {% for st in status_options %}
+                                <option value="{{ st }}" {% if complaint.resolution_status == st %}selected{% endif %}>{{ st }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Inquiry Observations / Resolution Notes</label>
+                            <textarea name="resolution_notes" class="form-control" rows="3" placeholder="Enter findings, counseling conducted, or FIR conversion reference...">{{ complaint.resolution_notes or '' }}</textarea>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-primary btn-sm px-4">Save Status Update</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

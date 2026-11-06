@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Enroll Officer{% endblock %}
+{% block breadcrumb %}Staff & Personnel / New Officer Enrollment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card table-card p-4">
+            <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+                <div>
+                    <h5 class="fw-bold mb-1 text-dark">Enroll Police Force Officer</h5>
+                    <p class="text-secondary small mb-0">Official police personnel induction form with rank assignment.</p>
+                </div>
+                <a href="{{ url_for('officers.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Roster
+                </a>
+            </div>
+
+            <form method="POST" action="{{ url_for('officers.create') }}">
+                {{ form.hidden_tag() }}
+
+                <!-- Section 1: Official Rank & Station Posting -->
+                <div class="bg-light p-3 rounded-3 mb-4 border">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-award-fill me-1"></i> 1. Official Rank, Badge & Assignment</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Badge Number *</label>
+                            {{ form.badge_number(class="form-control" + (" is-invalid" if form.badge_number.errors else ""), placeholder="e.g. LHR-PS-9021") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Rank Hierarchy *</label>
+                            {{ form.rank_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Functional Designation *</label>
+                            {{ form.designation_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Assigned Police Station *</label>
+                            {{ form.station_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Department Division</label>
+                            {{ form.department_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Current Duty Status</label>
+                            {{ form.current_status(class="form-select") }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Personal Profile -->
+                <div class="bg-light p-3 rounded-3 mb-4 border">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-bounding-box me-1"></i> 2. Personal Bio & Identification</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">First Name *</label>
+                            {{ form.first_name(class="form-control", placeholder="First name") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Last Name *</label>
+                            {{ form.last_name(class="form-control", placeholder="Last name") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Date of Birth *</label>
+                            {{ form.date_of_birth(class="form-control") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Gender *</label>
+                            {{ form.gender(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Blood Group</label>
+                            {{ form.blood_group(class="form-select") }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Contact & Service Terms -->
+                <div class="bg-light p-3 rounded-3 mb-4 border">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-telephone-fill me-1"></i> 3. Contact Details & Service Induction</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Primary Contact Phone *</label>
+                            {{ form.contact_phone(class="form-control", placeholder="+92 300 9876543") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Official Email</label>
+                            {{ form.email(class="form-control", placeholder="officer@punjabpolice.gov.pk") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Emergency Contact</label>
+                            {{ form.emergency_contact(class="form-control", placeholder="Spouse/Parent Name & Phone") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Joining / Enlistment Date *</label>
+                            {{ form.joining_date(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Monthly Salary</label>
+                            {{ form.salary(class="form-control", placeholder="e.g. 55000.00") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-2">
+                    <a href="{{ url_for('officers.index') }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-semibold shadow-sm">
+                        <i class="bi bi-person-check me-1"></i> Complete Officer Enrollment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

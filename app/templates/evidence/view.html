@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Evidence {{ evidence.evidence_number }}{% endblock %}
+{% block breadcrumb %}Evidence Management / Evidence File {{ evidence.evidence_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <!-- Top Action Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+            <a href="{{ url_for('evidence.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Evidence Locker
+            </a>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print Evidence Tag
+                </button>
+                {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+                <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#custodyTransferModal">
+                    <i class="bi bi-arrow-left-right me-1"></i> Transfer Custody
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Evidence Item Card -->
+        <div class="card shadow-sm border p-4 bg-white mb-4">
+            <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3 flex-wrap gap-2">
+                <div>
+                    <span class="badge bg-dark fs-6 font-monospace">{{ evidence.evidence_number }}</span>
+                    <h4 class="fw-bold text-dark mt-2 mb-0">{{ evidence.item_name }}</h4>
+                    <span class="badge bg-light text-dark border mt-1">{{ evidence.evidence_type.name }} Classification</span>
+                </div>
+                <div class="text-end">
+                    <div class="p-2 border rounded bg-light text-center font-monospace">
+                        <div class="fw-bold" style="font-size: 0.8rem; letter-spacing: 2px;">||||||| | |||| | ||||||</div>
+                        <div class="small text-muted">{{ evidence.barcode or evidence.evidence_number }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 small mb-4">
+                <div class="col-sm-4 text-muted">Current Custody Status:</div>
+                <div class="col-sm-8">
+                    {% set st_badge = 'info text-dark' if evidence.chain_of_custody_status == 'In Locker' else ('warning text-dark' if evidence.chain_of_custody_status == 'In Forensics' else ('primary' if evidence.chain_of_custody_status == 'In Court' else 'success')) %}
+                    <span class="badge bg-{{ st_badge }} fs-6">{{ evidence.chain_of_custody_status }}</span>
+                </div>
+
+                <div class="col-sm-4 text-muted">Current Custody Holder:</div>
+                <div class="col-sm-8">
+                    {% if evidence.current_holder %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-1 fs-6">
+                        <i class="bi bi-person-check-fill me-1"></i> {{ evidence.current_holder.full_name }} ({{ evidence.current_holder.role.name if evidence.current_holder.role else 'Officer' }})
+                    </span>
+                    {% elif evidence.collected_by %}
+                    <span class="badge bg-secondary px-3 py-1 fs-6">
+                        <i class="bi bi-person me-1"></i> {{ evidence.collected_by.full_name }} (Seizing Officer)
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary px-3 py-1 fs-6">Malkhana Custodian</span>
+                    {% endif %}
+                </div>
+
+                <div class="col-sm-4 text-muted">Current Storage Facility / Safe:</div>
+                <div class="col-sm-8 fw-semibold text-primary">
+                    <i class="bi bi-safe me-1"></i> {{ evidence.current_storage_location }}
+                </div>
+
+                <div class="col-sm-4 text-muted">Seizure Location & Date:</div>
+                <div class="col-sm-8">{{ evidence.collected_from_location }} &bull; {{ evidence.collected_at_datetime.strftime('%d %B %Y, %H:%M') }}</div>
+
+                <div class="col-sm-4 text-muted">Seized By Officer:</div>
+                <div class="col-sm-8 fw-semibold">{{ evidence.collected_by.full_name if evidence.collected_by else 'Officer' }} (Badge: {{ evidence.collected_by.badge_number }})</div>
+
+                <div class="col-sm-4 text-muted">Linked Case Docket:</div>
+                <div class="col-sm-8">
+                    {% if evidence.case %}
+                    <a href="{{ url_for('cases.view', id=evidence.case.id) }}" class="fw-bold text-decoration-none">
+                        {{ evidence.case.case_number }} - {{ evidence.case.case_title }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">No linked case file</span>
+                    {% endif %}
+                </div>
+
+                <div class="col-sm-4 text-muted">Physical Condition:</div>
+                <div class="col-sm-8">{{ evidence.condition_description or 'Intact & Sealed' }}</div>
+            </div>
+
+            <!-- Item Narrative -->
+            <div class="border-top pt-3">
+                <h6 class="fw-bold text-secondary small text-uppercase">Full Physical Description & Markings</h6>
+                <div class="p-3 bg-light rounded border small font-monospace" style="white-space: pre-wrap;">{{ evidence.description }}</div>
+            </div>
+        </div>
+
+        <!-- Timeline View of Custody Chain -->
+        <div class="card table-card shadow-sm border-0 p-4 mb-4">
+            <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-diagram-3 me-2 text-primary"></i>Chain of Custody Timeline Tracker</h6>
+            
+            <div class="position-relative ps-3" style="border-left: 2px dashed #0d6efd; margin-left: 10px;">
+                {% for log in custody_logs %}
+                <div class="position-relative mb-4 ps-3">
+                    <!-- Timeline Dot -->
+                    <div class="position-absolute rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                         style="left: -23px; top: 0; width: 24px; height: 24px; font-size: 0.75rem;">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+
+                    <div class="bg-light p-3 rounded border">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                            <span class="badge bg-primary">{{ log.transfer_purpose }}</span>
+                            <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ log.transfer_date.strftime('%d-%b-%Y %I:%M %p') }}</small>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 small my-2">
+                            <div>
+                                <span class="text-muted">Handed Over By:</span> 
+                                <strong>{{ log.transferred_from.full_name if log.transferred_from else 'Initial Seizure' }}</strong>
+                            </div>
+                            <div>
+                                <span class="text-muted">&rarr; Received By:</span> 
+                                <strong class="text-primary">{{ log.transferred_to.full_name if log.transferred_to else 'Malkhana Safe' }}</strong>
+                            </div>
+                        </div>
+                        <div class="small text-secondary">
+                            <i class="bi bi-geo-alt text-danger me-1"></i>
+                            <span>{{ log.source_location }}</span> &rarr; <strong>{{ log.destination_location }}</strong>
+                        </div>
+                        {% if log.receipt_ack %}
+                        <div class="small text-muted mt-1">
+                            <i class="bi bi-receipt me-1"></i> Ack Ref: <code>{{ log.receipt_ack }}</code>
+                        </div>
+                        {% endif %}
+                        {% if log.remarks %}
+                        <div class="small text-dark mt-2 p-2 bg-white rounded border-start border-3 border-info">
+                            <strong>Remarks:</strong> {{ log.remarks }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted small">No custody transfers recorded yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Chain of Custody Transfer -->
+{% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+<div class="modal fade" id="custodyTransferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="bi bi-arrow-left-right me-1 text-primary"></i> Handover Chain of Custody</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('evidence.transfer', id=evidence.id) }}">
+                {{ transfer_form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Transfer Reason / Purpose *</label>
+                        {{ transfer_form.transfer_purpose(class="form-select") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Handed Over To (Officer / Custodian) *</label>
+                        {{ transfer_form.transferred_to_user_id(class="form-select") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Current Source Location *</label>
+                        {{ transfer_form.source_location(class="form-control") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Destination Location / Lab / Court *</label>
+                        {{ transfer_form.destination_location(class="form-control", placeholder="e.g. Punjab Forensic Science Agency (PFSA), Lahore") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Dispatch / Receipt Acknowledgment Number</label>
+                        {{ transfer_form.receipt_ack(class="form-control", placeholder="e.g. PFSA-DISP-2026-441") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Remarks & Handover Instructions</label>
+                        {{ transfer_form.remarks(class="form-control", rows=2, placeholder="Exhibit packaging condition, cold storage notes, escort officers...") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Record Custody Handover</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

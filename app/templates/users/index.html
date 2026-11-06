@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}User Accounts{% endblock %}
+{% block breadcrumb %}System Administration / User Management{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">System User Accounts & Role Permissions</h4>
+        <p class="text-secondary small mb-0">Role-based access control (Admin, SHO, Inspector, Constable, Clerk) and audit credentials.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('users.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-person-plus-fill"></i> Create System User
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('users.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search username, name, email, badge..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="role_id" class="form-select form-select-sm">
+                <option value="0">All System Roles</option>
+                {% for r in roles %}
+                <option value="{{ r.id }}" {% if role_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            {% if search or role_id %}
+            <a href="{{ url_for('users.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Users Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>System Role</th>
+                    <th>Station Assignment</th>
+                    <th>Contact Phone / Email</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in pagination.items %}
+                <tr>
+                    <td>
+                        <span class="fw-bold text-dark">{{ u.username }}</span>
+                        {% if u.badge_number %}
+                        <div class="text-muted small font-monospace">Badge: {{ u.badge_number }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.full_name }}</td>
+                    <td>
+                        {% set r_badge = 'dark' if u.role.name == 'Admin' else ('warning text-dark' if u.role.name == 'SHO' else ('info text-dark' if u.role.name == 'Inspector' else ('success' if u.role.name == 'Constable' else 'secondary'))) %}
+                        <span class="badge bg-{{ r_badge }}">{{ u.role.name if u.role else 'No Role' }}</span>
+                    </td>
+                    <td>
+                        <span class="small">{{ u.station.name if u.station else 'Central Headquarters' }}</span>
+                    </td>
+                    <td>
+                        <div class="small">{{ u.email }}</div>
+                        <div class="text-muted small">{{ u.phone or '' }}</div>
+                    </td>
+                    <td>
+                        {% if u.is_active_account %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-danger">Deactivated</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted">
+                        {{ u.last_login.strftime('%d %b %Y, %H:%M') if u.last_login else 'Never' }}
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('users.edit', id=u.id) }}" class="btn btn-light border text-primary" title="Edit User">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if u.id != current_user.id %}
+                            <form method="POST" action="{{ url_for('users.toggle_status', id=u.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-light border text-warning" title="Toggle Status">
+                                    <i class="bi bi-power"></i>
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-light border text-danger" title="Soft Delete" data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ u.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        {% if u.id != current_user.id %}
+                        <div class="modal fade text-start" id="deleteUserModal{{ u.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Soft Delete User Account</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete account <strong>{{ u.username }}</strong> ({{ u.full_name }})?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('users.delete', id=u.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Soft Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">No users found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}First Information Reports (FIR){% endblock %}
+{% block breadcrumb %}FIR Management / Register List{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">First Information Report (FIR) Register</h4>
+        <p class="text-secondary small mb-0">Statutory record of cognizable & non-cognizable offenses registered at the station.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.firs_pdf') }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+        </a>
+        <a href="{{ url_for('reports.firs_csv') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+        </a>
+        {% if current_user.has_role('Admin', 'SHO', 'Inspector', 'Clerk') %}
+        <a href="{{ url_for('firs.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-file-earmark-plus"></i> Register New FIR
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('firs.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search by FIR #, location, complainant..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="status_id" class="form-select form-select-sm">
+                <option value="0">All FIR Statuses</option>
+                {% for st in statuses %}
+                <option value="{{ st.id }}" {% if status_id == st.id %}selected{% endif %}>{{ st.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            {% if search or status_id %}
+            <a href="{{ url_for('firs.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- FIRs Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>FIR Number</th>
+                    <th>Crime Classification</th>
+                    <th>Complainant</th>
+                    <th>Incident Place & Date</th>
+                    <th>Assigned IO</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fir in pagination.items %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('firs.view', id=fir.id) }}" class="fw-bold text-decoration-none text-primary">
+                            {{ fir.fir_number }}
+                        </a>
+                        {% if fir.is_cognizable %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" style="font-size: 0.68rem;">Cognizable</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="fw-semibold small">{{ fir.crime_type.name if fir.crime_type else 'Unclassified' }}</div>
+                        <span class="text-muted" style="font-size: 0.75rem;">{{ fir.crime_type.relevant_sections if fir.crime_type else '' }}</span>
+                    </td>
+                    <td>
+                        <div class="small fw-semibold">{{ fir.complainant.full_name if fir.complainant else 'State / Suo Moto' }}</div>
+                        <span class="text-muted" style="font-size: 0.75rem;">{{ fir.complainant.phone if fir.complainant else '' }}</span>
+                    </td>
+                    <td>
+                        <div class="small text-truncate" style="max-width: 180px;">{{ fir.incident_location }}</div>
+                        <span class="text-muted" style="font-size: 0.75rem;">
+                            {{ fir.incident_date_time.strftime('%d %b %Y, %H:%M') if fir.incident_date_time else '' }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if fir.io_officer %}
+                        <div class="small fw-semibold">{{ fir.io_officer.full_name }}</div>
+                        <span class="text-muted" style="font-size: 0.72rem;">{{ fir.io_officer.badge_number }}</span>
+                        {% else %}
+                        <span class="badge bg-light text-muted border">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ fir.status_rel.color_badge if fir.status_rel else 'secondary' }}">
+                            {{ fir.status_rel.name if fir.status_rel else 'Registered' }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('firs.view', id=fir.id) }}" class="btn btn-light border" title="View Details">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+                            <a href="{{ url_for('firs.edit', id=fir.id) }}" class="btn btn-light border text-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
+                            {% if current_user.has_role('Admin', 'SHO') %}
+                            <button type="button" class="btn btn-light border text-danger" title="Soft Delete" data-bs-toggle="modal" data-bs-target="#deleteModal{{ fir.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        {% if current_user.has_role('Admin', 'SHO') %}
+                        <div class="modal fade text-start" id="deleteModal{{ fir.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Confirm Soft Deletion</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete FIR <strong>{{ fir.fir_number }}</strong>?<br>
+                                        <span class="text-muted small">This action preserves audit history and marks the record as inactive.</span>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('firs.delete', id=fir.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Soft Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No FIR records match your query.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+{% endblock %}

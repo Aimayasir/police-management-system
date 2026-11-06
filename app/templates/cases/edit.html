@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Case {{ case.case_number }}{% endblock %}
+{% block breadcrumb %}Case Management / Edit {{ case.case_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <div class="card table-card p-4">
+            <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+                <div>
+                    <h5 class="fw-bold mb-1 text-dark">Modify Case Docket: {{ case.case_number }}</h5>
+                    <p class="text-secondary small mb-0">Changes in status will be automatically recorded in the case audit timeline.</p>
+                </div>
+                <a href="{{ url_for('cases.view', id=case.id) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Cancel & View
+                </a>
+            </div>
+
+            <form method="POST" action="{{ url_for('cases.edit', id=case.id) }}">
+                {{ form.hidden_tag() }}
+
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Case Title</label>
+                        {{ form.case_title(class="form-control") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Linked FIR</label>
+                        {{ form.fir_id(class="form-select") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Crime Classification</label>
+                        {{ form.crime_type_id(class="form-select") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Station Command</label>
+                        {{ form.station_id(class="form-select") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Lead Investigating Officer</label>
+                        {{ form.lead_investigator_id(class="form-select") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Jurisdiction Court</label>
+                        {{ form.court_id(class="form-select") }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Case Status</label>
+                        {{ form.case_status(class="form-select") }}
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Case Synopsis & Investigation Scope</label>
+                        {{ form.summary(class="form-control", rows="5") }}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('cases.view', id=case.id) }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-semibold shadow-sm">
+                        <i class="bi bi-check2 me-1"></i> Update Case Docket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

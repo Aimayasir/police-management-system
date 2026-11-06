@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily Attendance{% endblock %}
+{% block breadcrumb %}Staff & Personnel / Attendance Muster Roll{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Daily Police Attendance Muster Roll</h4>
+        <p class="text-secondary small mb-0">Daily roll-call check-in, field duty status, and leave accounting.</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if current_user.has_role('Admin', 'SHO', 'Inspector', 'Clerk') %}
+        <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#markAttendanceModal">
+            <i class="bi bi-check2-circle"></i> Mark Attendance
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Date Navigation Bar -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('officers.attendance') }}" class="row g-2 align-items-center">
+        <div class="col-auto">
+            <label class="form-label small fw-semibold mb-0">Select Date:</label>
+        </div>
+        <div class="col-auto">
+            <input type="date" name="date" class="form-control form-control-sm" value="{{ selected_date.strftime('%Y-%m-%d') }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary btn-sm">Load Muster Roll</button>
+        </div>
+        <div class="col-auto ms-auto">
+            <span class="badge bg-light text-dark border px-3 py-2">
+                <i class="bi bi-clock-history me-1 text-primary"></i> 
+                Muster Roll for <strong>{{ selected_date.strftime('%A, %d %B %Y') }}</strong>
+            </span>
+        </div>
+    </form>
+</div>
+
+<!-- Attendance Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Officer Name</th>
+                    <th>Badge Number</th>
+                    <th>Rank</th>
+                    <th>Check In Time</th>
+                    <th>Check Out Time</th>
+                    <th>Roll Call Status</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for att in attendances %}
+                <tr>
+                    <td class="fw-bold text-dark">{{ att.officer.full_name }}</td>
+                    <td><span class="badge bg-dark font-monospace">{{ att.officer.badge_number }}</span></td>
+                    <td><span class="small text-muted">{{ att.officer.rank.name }}</span></td>
+                    <td>{{ att.check_in_time.strftime('%H:%M') if att.check_in_time else '-' }}</td>
+                    <td>{{ att.check_out_time.strftime('%H:%M') if att.check_out_time else '-' }}</td>
+                    <td>
+                        {% set st_col = 'success' if att.attendance_status == 'Present' else ('info' if att.attendance_status == 'On Duty' else ('warning text-dark' if att.attendance_status == 'Late' else 'danger')) %}
+                        <span class="badge bg-{{ st_col }}">{{ att.attendance_status }}</span>
+                    </td>
+                    <td class="small text-muted">{{ att.remarks or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No attendance marked for {{ selected_date.strftime('%d %b %Y') }}.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Mark Attendance -->
+{% if current_user.has_role('Admin', 'SHO', 'Inspector', 'Clerk') %}
+<div class="modal fade" id="markAttendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="bi bi-check2-circle me-1 text-primary"></i> Mark Roll-Call Attendance</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('officers.attendance') }}">
+                {{ form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Station</label>
+                        {{ form.station_id(class="form-select") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Officer *</label>
+                        {{ form.officer_id(class="form-select") }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Attendance Date *</label>
+                            {{ form.attendance_date(class="form-control") }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Status *</label>
+                            {{ form.attendance_status(class="form-select") }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Remarks (e.g. Field assignment, Sick slip)</label>
+                        {{ form.remarks(class="form-control", placeholder="Optional notes") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Attendance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

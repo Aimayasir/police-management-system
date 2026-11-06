@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}404 - Record Not Found{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+    <div class="display-1 fw-bold text-muted mb-2">404</div>
+    <h3 class="fw-bold text-dark">Record or Page Not Found</h3>
+    <p class="text-secondary">The FIR, case file, or station resource you requested does not exist or may have been soft deleted.</p>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary mt-3">
+        <i class="bi bi-arrow-left me-1"></i> Return to Terminal Dashboard
+    </a>
+</div>
+{% endblock %}

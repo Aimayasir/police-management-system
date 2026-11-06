@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Investigation Cases{% endblock %}
+{% block breadcrumb %}Case Management / Investigation Case Files{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Criminal Investigation Case Files</h4>
+        <p class="text-secondary small mb-0">Active case dockets, trial hearings, suspect charge sheets, and evidence tracking.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.cases_pdf') }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+        </a>
+        <a href="{{ url_for('reports.cases_csv') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+        </a>
+        {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+        <a href="{{ url_for('cases.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-folder-plus"></i> Open New Case
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search & Status Filter -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('cases.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search case #, title, or lead officer..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="status" class="form-select form-select-sm">
+                <option value="">All Case Statuses</option>
+                {% for st in status_options %}
+                <option value="{{ st }}" {% if current_status == st %}selected{% endif %}>{{ st }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            {% if search or current_status %}
+            <a href="{{ url_for('cases.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Cases Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Case Docket #</th>
+                    <th>Case Title</th>
+                    <th>Crime Classification</th>
+                    <th>Lead Investigator</th>
+                    <th>Court Jurisdiction</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for case in pagination.items %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('cases.view', id=case.id) }}" class="fw-bold text-decoration-none text-primary">
+                            {{ case.case_number }}
+                        </a>
+                        {% if case.fir %}
+                        <div class="text-muted" style="font-size: 0.72rem;">FIR: {{ case.fir.fir_number }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="fw-semibold small text-truncate" style="max-width: 220px;">{{ case.case_title }}</div>
+                        <span class="text-muted" style="font-size: 0.72rem;">Opened: {{ case.date_opened.strftime('%d %b %Y') if case.date_opened else '' }}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">{{ case.crime_type.name if case.crime_type else 'Unclassified' }}</span>
+                    </td>
+                    <td>
+                        <div class="small fw-semibold">{{ case.lead_investigator.full_name if case.lead_investigator else 'Unassigned' }}</div>
+                        <span class="text-muted" style="font-size: 0.72rem;">{{ case.lead_investigator.badge_number if case.lead_investigator else '' }}</span>
+                    </td>
+                    <td>
+                        <div class="small">{{ case.court.name if case.court else 'Not in court yet' }}</div>
+                    </td>
+                    <td>
+                        {% set st_badge = 'secondary' %}
+                        {% if case.case_status == 'Under Investigation' %}
+                            {% set st_badge = 'warning text-dark' %}
+                        {% elif case.case_status == 'Charge Sheeted' %}
+                            {% set st_badge = 'info text-dark' %}
+                        {% elif case.case_status == 'In Court' %}
+                            {% set st_badge = 'primary' %}
+                        {% elif case.case_status == 'Closed - Solved' %}
+                            {% set st_badge = 'success' %}
+                        {% elif case.case_status == 'Closed - Unsolved' %}
+                            {% set st_badge = 'danger' %}
+                        {% endif %}
+                        <span class="badge bg-{{ st_badge }}">{{ case.case_status }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('cases.view', id=case.id) }}" class="btn btn-light border" title="View Case Docket">
+                                <i class="bi bi-folder2-open"></i>
+                            </a>
+                            {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+                            <a href="{{ url_for('cases.edit', id=case.id) }}" class="btn btn-light border text-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
+                            {% if current_user.has_role('Admin', 'SHO') %}
+                            <button type="button" class="btn btn-light border text-danger" title="Soft Delete" data-bs-toggle="modal" data-bs-target="#deleteCaseModal{{ case.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        {% if current_user.has_role('Admin', 'SHO') %}
+                        <div class="modal fade text-start" id="deleteCaseModal{{ case.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Confirm Case File Soft Deletion</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete Case <strong>{{ case.case_number }}</strong>?<br>
+                                        <span class="text-muted small">All linked notes, hearings, and evidence records remain preserved.</span>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('cases.delete', id=case.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Soft Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No case files match your search.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+{% endblock %}

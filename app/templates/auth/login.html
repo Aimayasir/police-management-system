@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Officer Sign In{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-75 py-4">
+    <div class="col-md-7 col-lg-5 col-xl-4">
+        <!-- Login Card -->
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="card-header text-center py-4 text-white" style="background: linear-gradient(135deg, #0b132b 0%, #1e3a8a 100%);">
+                <div class="mb-2">
+                    <i class="bi bi-shield-lock-fill text-warning fs-1"></i>
+                </div>
+                <h4 class="fw-bold mb-1">PSMS PORTAL</h4>
+                <p class="text-white-50 small mb-0">Authorized Law Enforcement Personnel Only</p>
+            </div>
+            
+            <div class="card-body p-4 p-md-5 bg-white">
+                <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small">USERNAME OR BADGE EMAIL</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person"></i></span>
+                            {{ form.username(class="form-control border-start-0 ps-1" + (" is-invalid" if form.username.errors else ""), placeholder="Enter username", id="loginUsername") }}
+                        </div>
+                        {% for error in form.username.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small">SECURE PASSWORD</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-key"></i></span>
+                            {{ form.password(class="form-control border-start-0 ps-1" + (" is-invalid" if form.password.errors else ""), placeholder="••••••••", id="loginPassword") }}
+                        </div>
+                        {% for error in form.password.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-4 form-check">
+                        {{ form.remember_me(class="form-check-input") }}
+                        <label class="form-check-label text-muted small" for="{{ form.remember_me.id }}">Remember this workstation</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Terminal
+                    </button>
+                </form>
+
+                <!-- Quick Demo Login Access Buttons -->
+                <div class="mt-4 pt-3 border-top">
+                    <div class="text-muted small fw-bold mb-2 text-center text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                        Quick Demo Account Selector
+                    </div>
+                    <div class="d-flex flex-wrap gap-1 justify-content-center">
+                        <button type="button" class="btn btn-xs btn-outline-dark" onclick="fillCredentials('admin', 'admin123')">
+                            <i class="bi bi-person-fill-gear"></i> Admin
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="fillCredentials('sho', 'admin123')">
+                            <i class="bi bi-star-fill text-warning"></i> SHO
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-info" onclick="fillCredentials('inspector', 'admin123')">
+                            <i class="bi bi-search"></i> Inspector
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-success" onclick="fillCredentials('constable', 'admin123')">
+                            <i class="bi bi-shield-check"></i> Constable
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="fillCredentials('clerk', 'admin123')">
+                            <i class="bi bi-pencil-square"></i> Clerk
+                        </button>
+                    </div>
+                    <div class="text-center text-muted small mt-2" style="font-size: 0.72rem;">
+                        Same password for all accounts: <strong>admin123</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-footer bg-light text-center py-3 text-muted small">
+                <i class="bi bi-info-circle text-primary me-1"></i> Unlawful access is monitored and prosecuted under Penal Cyber Laws.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function fillCredentials(user, pass) {
+    document.getElementById('loginUsername').value = user;
+    document.getElementById('loginPassword').value = pass;
+}
+</script>
+{% endblock %}

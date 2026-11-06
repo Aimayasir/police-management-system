@@ -1,0 +1,463 @@
+{% extends 'base.html' %}
+
+{% block title %}Operational Dashboard{% endblock %}
+{% block breadcrumb %}Station Command / Live Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome & Quick Action Bar -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">
+            <i class="bi bi-shield-shaded text-primary me-2"></i>Police Station Operational Command Center
+        </h4>
+        <p class="text-secondary small mb-0">
+            Real-time situational dashboard for {{ current_user.station.name if current_user.station else 'Central Police HQ' }} &bull; Logged in as <strong>{{ current_user.full_name }}</strong> (<span class="text-primary">{{ user_role }}</span>)
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if user_role in ['Admin', 'SHO', 'Inspector', 'Clerk'] %}
+        <a href="{{ url_for('firs.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-file-earmark-plus"></i> Register FIR
+        </a>
+        {% endif %}
+        {% if user_role in ['Admin', 'SHO', 'Inspector'] %}
+        <a href="{{ url_for('cases.create') }}" class="btn btn-outline-dark btn-sm d-flex align-items-center gap-1">
+            <i class="bi bi-briefcase"></i> Open Case File
+        </a>
+        <a href="{{ url_for('detainees.create') }}" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1">
+            <i class="bi bi-person-slash"></i> Book Detainee
+        </a>
+        <a href="{{ url_for('evidence.create') }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+            <i class="bi bi-box-seam"></i> Log Evidence
+        </a>
+        {% endif %}
+        {% if user_role in ['Clerk', 'Admin', 'SHO'] %}
+        <a href="{{ url_for('complaints.create') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+            <i class="bi bi-megaphone"></i> Lodge Complaint
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Primary Stats Grid (4 Cards) -->
+<div class="row g-3 mb-4">
+    <!-- Total FIRs -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 p-3 shadow-sm border-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold text-uppercase">Total FIRs</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">{{ total_firs }}</h3>
+                    <small class="text-success"><i class="bi bi-shield-check"></i> System Registered</small>
+                </div>
+                <div class="stat-icon-wrapper bg-primary bg-opacity-10 text-primary rounded-3 p-3">
+                    <i class="bi bi-file-earmark-text fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Cases -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 p-3 shadow-sm border-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold text-uppercase">Active Cases</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">{{ active_cases }}</h3>
+                    <small class="text-warning"><i class="bi bi-arrow-repeat"></i> Under Investigation</small>
+                </div>
+                <div class="stat-icon-wrapper bg-warning bg-opacity-10 text-warning rounded-3 p-3">
+                    <i class="bi bi-briefcase fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Officers on Duty -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 p-3 shadow-sm border-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold text-uppercase">Officers on Duty</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1" id="statOfficersOnDuty">{{ officers_on_duty }}</h3>
+                    <small class="text-info"><i class="bi bi-check-circle"></i> Deployed Today</small>
+                </div>
+                <div class="stat-icon-wrapper bg-info bg-opacity-10 text-info rounded-3 p-3">
+                    <i class="bi bi-person-badge fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detainees in Custody -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 p-3 shadow-sm border-0">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold text-uppercase">In Lockup Custody</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">{{ detainees_in_custody }}</h3>
+                    <small class="text-danger"><i class="bi bi-lock-fill"></i> In Station Cells</small>
+                </div>
+                <div class="stat-icon-wrapper bg-danger bg-opacity-10 text-danger rounded-3 p-3">
+                    <i class="bi bi-person-slash fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Secondary Resource Counters (4 Mini Pills) -->
+<div class="row g-2 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-2 px-3 bg-white d-flex flex-row align-items-center justify-content-between rounded-3">
+            <span class="small text-muted"><i class="bi bi-car-front text-primary me-1"></i> Patrol Vehicles</span>
+            <span class="badge bg-primary rounded-pill">{{ available_vehicles }} Available</span>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-2 px-3 bg-white d-flex flex-row align-items-center justify-content-between rounded-3">
+            <span class="small text-muted"><i class="bi bi-shield text-danger me-1"></i> Armory Weapons</span>
+            <span class="badge bg-secondary rounded-pill">{{ total_weapons }} In Safe</span>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-2 px-3 bg-white d-flex flex-row align-items-center justify-content-between rounded-3">
+            <span class="small text-muted"><i class="bi bi-box-seam text-success me-1"></i> Malkhana Exhibits</span>
+            <span class="badge bg-success rounded-pill">{{ total_evidence }} Logged</span>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-2 px-3 bg-white d-flex flex-row align-items-center justify-content-between rounded-3">
+            <span class="small text-muted"><i class="bi bi-megaphone text-warning me-1"></i> Open Complaints</span>
+            <span class="badge bg-warning text-dark rounded-pill">{{ pending_complaints }} Pending</span>
+        </div>
+    </div>
+</div>
+
+<!-- ROLE-SPECIFIC SPECIALIZED WIDGETS -->
+{% if user_role == 'Inspector' and assigned_cases %}
+<div class="card table-card shadow-sm border-0 p-3 mb-4 border-start border-4 border-warning">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-star-fill text-warning me-1"></i> My Assigned Investigation Dockets (Lead IO)</h6>
+        <a href="{{ url_for('cases.index') }}" class="small text-decoration-none">View All Cases &rarr;</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr><th>Case #</th><th>Title</th><th>Crime Category</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+                {% for c in assigned_cases %}
+                <tr>
+                    <td class="fw-bold">{{ c.case_number }}</td>
+                    <td>{{ c.case_title }}</td>
+                    <td><span class="badge bg-secondary">{{ c.crime_type.name if c.crime_type else '-' }}</span></td>
+                    <td><span class="badge bg-primary">{{ c.case_status }}</span></td>
+                    <td><a href="{{ url_for('cases.view', id=c.id) }}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">Open Docket</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif user_role == 'Constable' and my_duties %}
+<div class="card table-card shadow-sm border-0 p-3 mb-4 border-start border-4 border-info">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-shield-check text-info me-1"></i> My Shift & Beat Assignment Today</h6>
+        <a href="{{ url_for('officers.duty_roster') }}" class="small text-decoration-none">Duty Roster &rarr;</a>
+    </div>
+    <div class="row g-2">
+        {% for d in my_duties %}
+        <div class="col-md-6">
+            <div class="p-2 bg-light rounded border">
+                <div><strong>Shift:</strong> {{ d.shift.name if d.shift else 'Standard Shift' }}</div>
+                <div><strong>Assigned Beat / Point:</strong> <span class="text-primary">{{ d.assignment_area }}</span></div>
+                <div class="small text-muted mt-1">Vehicle: {{ d.assigned_vehicle.registration_number if d.assigned_vehicle else 'Beat Walk' }} &bull; Status: {{ d.duty_status }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% elif user_role == 'Clerk' and recent_complaints %}
+<div class="card table-card shadow-sm border-0 p-3 mb-4 border-start border-4 border-primary">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-megaphone-fill text-primary me-1"></i> Public Grievance Desk - Recent Complaints</h6>
+        <a href="{{ url_for('complaints.index') }}" class="small text-decoration-none">View All Complaints &rarr;</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr><th>Complaint #</th><th>Citizen</th><th>Subject</th><th>Priority</th><th>Action</th></tr></thead>
+            <tbody>
+                {% for comp in recent_complaints %}
+                <tr>
+                    <td class="fw-bold">{{ comp.complaint_number }}</td>
+                    <td>{{ comp.citizen_name }}</td>
+                    <td>{{ comp.subject }}</td>
+                    <td><span class="badge bg-warning text-dark">{{ comp.priority }}</span></td>
+                    <td><a href="{{ url_for('complaints.view', id=comp.id) }}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- CHARTS SECTION (3 Interactive Charts: Monthly FIRs, Crime Distribution, Case Status) -->
+<div class="row g-3 mb-4">
+    <!-- 1. Monthly FIR Registrations Bar / Line Chart -->
+    <div class="col-lg-6">
+        <div class="card table-card shadow-sm border-0 h-100 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-graph-up me-1 text-primary"></i> Monthly FIR Registrations
+                </h6>
+                <span class="badge bg-light text-muted border">6-Month Trend</span>
+            </div>
+            <div style="height: 250px; position: relative;">
+                <canvas id="monthlyFirChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Crime Categories Distribution Doughnut Chart -->
+    <div class="col-lg-3 col-md-6">
+        <div class="card table-card shadow-sm border-0 h-100 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-pie-chart me-1 text-success"></i> Crime Categories
+                </h6>
+                <span class="badge bg-light text-muted border">Types</span>
+            </div>
+            <div style="height: 250px; position: relative;">
+                <canvas id="crimeCategoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Case Status (Open vs Closed) Doughnut Chart -->
+    <div class="col-lg-3 col-md-6">
+        <div class="card table-card shadow-sm border-0 h-100 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-check-circle me-1 text-warning"></i> Cases: Open vs Closed
+                </h6>
+                <span class="badge bg-light text-muted border">Resolution</span>
+            </div>
+            <div style="height: 250px; position: relative;">
+                <canvas id="caseStatusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Tables Section: Recent FIRs & Today's Duty Roster -->
+<div class="row g-3">
+    <!-- Recent FIRs -->
+    <div class="col-lg-7">
+        <div class="card table-card shadow-sm border-0 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-clock-history me-1 text-primary"></i> Recent FIR Registrations
+                </h6>
+                <a href="{{ url_for('firs.index') }}" class="small text-decoration-none">View All FIRs <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>FIR Number</th>
+                            <th>Crime Type</th>
+                            <th>Complainant</th>
+                            <th>Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in recent_firs %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('firs.view', id=f.id) }}" class="fw-bold text-decoration-none text-primary">
+                                    {{ f.fir_number }}
+                                </a>
+                                <div class="text-muted small" style="font-size: 0.75rem;">
+                                    {{ f.incident_date_time.strftime('%d %b %Y, %H:%M') if f.incident_date_time else '' }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ f.crime_type.name if f.crime_type else 'Unclassified' }}</span>
+                            </td>
+                            <td>{{ f.complainant.full_name if f.complainant else 'State / Suo Moto' }}</td>
+                            <td>
+                                <span class="badge bg-{{ f.status_rel.color_badge if f.status_rel else 'secondary' }}">
+                                    {{ f.status_rel.name if f.status_rel else 'Registered' }}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ url_for('firs.view', id=f.id) }}" class="btn btn-sm btn-light border" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-3">No FIR records found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Duty Roster -->
+    <div class="col-lg-5">
+        <div class="card table-card shadow-sm border-0 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-calendar2-check me-1 text-info"></i> Today's Duty Roster
+                </h6>
+                <a href="{{ url_for('officers.duty_roster') }}" class="small text-decoration-none">Full Roster <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Officer</th>
+                            <th>Shift</th>
+                            <th>Sector / Area</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in today_rosters %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold small">{{ r.officer.full_name if r.officer else 'Unknown' }}</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">{{ r.officer.rank.name if r.officer and r.officer.rank else '' }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                                    {{ r.shift.name if r.shift else 'Standard' }}
+                                </span>
+                            </td>
+                            <td class="small">{{ r.assignment_area }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-3">No active roster scheduled for today.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Fetch live chart data from JSON API endpoint
+    fetch('/api/dashboard/charts')
+        .then(response => response.json())
+        .then(data => {
+            // Update officers on duty card if available
+            if (data.officers_on_duty) {
+                const offEl = document.getElementById('statOfficersOnDuty');
+                if (offEl) offEl.textContent = data.officers_on_duty.on_duty;
+            }
+
+            // 1. Monthly FIR Bar / Line Chart
+            const ctxMonthly = document.getElementById('monthlyFirChart')?.getContext('2d');
+            if (ctxMonthly) {
+                new Chart(ctxMonthly, {
+                    type: 'bar',
+                    data: {
+                        labels: data.monthly_firs.labels,
+                        datasets: [{
+                            label: 'FIRs Registered',
+                            data: data.monthly_firs.data,
+                            backgroundColor: 'rgba(37, 99, 235, 0.75)',
+                            borderColor: '#2563eb',
+                            borderWidth: 1.5,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+
+            // 2. Crime Categories Doughnut Chart
+            const ctxCategory = document.getElementById('crimeCategoryChart')?.getContext('2d');
+            if (ctxCategory) {
+                new Chart(ctxCategory, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.crime_categories.labels,
+                        datasets: [{
+                            data: data.crime_categories.data,
+                            backgroundColor: [
+                                '#2563eb', '#10b981', '#f59e0b', '#ef4444', 
+                                '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 10, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 3. Case Status (Open vs Closed) Doughnut Chart
+            const ctxCaseStatus = document.getElementById('caseStatusChart')?.getContext('2d');
+            if (ctxCaseStatus) {
+                new Chart(ctxCaseStatus, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.case_status.labels,
+                        datasets: [{
+                            data: data.case_status.data,
+                            backgroundColor: ['#f59e0b', '#10b981'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 10, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching dashboard charts data:', err);
+        });
+});
+</script>
+{% endblock %}

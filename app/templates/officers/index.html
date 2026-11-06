@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Police Personnel{% endblock %}
+{% block breadcrumb %}Staff & Personnel / Officer Roster{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Police Force Personnel Directory</h4>
+        <p class="text-secondary small mb-0">Officer service records, rank hierarchy, postings, and duty readiness status.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.officers_pdf') }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+        </a>
+        <a href="{{ url_for('reports.officers_csv') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+        </a>
+        {% if current_user.has_role('Admin', 'SHO') %}
+        <a href="{{ url_for('officers.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-person-plus"></i> Enroll Officer
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('officers.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search badge #, name, phone..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="station_id" class="form-select form-select-sm">
+                <option value="0">All Police Stations</option>
+                {% for st in stations %}
+                <option value="{{ st.id }}" {% if station_id == st.id %}selected{% endif %}>{{ st.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="rank_id" class="form-select form-select-sm">
+                <option value="0">All Ranks</option>
+                {% for r in ranks %}
+                <option value="{{ r.id }}" {% if rank_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button>
+            {% if search or station_id or rank_id %}
+            <a href="{{ url_for('officers.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Officers Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Badge #</th>
+                    <th>Officer Name</th>
+                    <th>Rank & Level</th>
+                    <th>Designation</th>
+                    <th>Station / Dept</th>
+                    <th>Contact Phone</th>
+                    <th>Duty Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for officer in pagination.items %}
+                <tr>
+                    <td>
+                        <span class="badge bg-dark font-monospace">{{ officer.badge_number }}</span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('officers.view', id=officer.id) }}" class="fw-bold text-decoration-none text-primary">
+                            {{ officer.full_name }}
+                        </a>
+                        <div class="text-muted" style="font-size: 0.72rem;">Blood Group: {{ officer.blood_group or 'N/A' }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
+                            {{ officer.rank.name if officer.rank else 'Officer' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="small fw-semibold">{{ officer.designation.title if officer.designation else '-' }}</div>
+                    </td>
+                    <td>
+                        <div class="small">{{ officer.station.name if officer.station else 'Central HQ' }}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ officer.department.name if officer.department else 'General Patrol' }}</div>
+                    </td>
+                    <td class="small">{{ officer.contact_phone }}</td>
+                    <td>
+                        {% set st_col = 'success' if officer.current_status == 'On Duty' else ('info' if officer.current_status == 'On Patrol' else ('warning text-dark' if officer.current_status == 'On Leave' else 'danger')) %}
+                        <span class="badge bg-{{ st_col }}">{{ officer.current_status }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('officers.view', id=officer.id) }}" class="btn btn-light border" title="View Officer Profile">
+                                <i class="bi bi-person-lines-fill"></i>
+                            </a>
+                            {% if current_user.has_role('Admin', 'SHO') %}
+                            <a href="{{ url_for('officers.edit', id=officer.id) }}" class="btn btn-light border text-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn btn-light border text-danger" title="Soft Delete" data-bs-toggle="modal" data-bs-target="#deleteOfficerModal{{ officer.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        {% if current_user.has_role('Admin', 'SHO') %}
+                        <div class="modal fade text-start" id="deleteOfficerModal{{ officer.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Soft Delete Officer Record</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete record for Officer <strong>{{ officer.full_name }}</strong> (Badge: {{ officer.badge_number }})?<br>
+                                        <span class="text-muted small">Their past cases and duty logs will remain intact.</span>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('officers.delete', id=officer.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Soft Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">No officers found matching search parameters.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+{% endblock %}

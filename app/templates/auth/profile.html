@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}User Profile & Security{% endblock %}
+{% block breadcrumb %}Account / Security & Profile Settings{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Left Column: User Profile Card & Information -->
+    <div class="col-lg-5">
+        <div class="card table-card shadow-sm border-0 p-4 mb-4">
+            <div class="text-center mb-3">
+                <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center fw-bold fs-3 shadow" style="width: 72px; height: 72px;">
+                    {{ user.full_name[:2].upper() }}
+                </div>
+                <h5 class="fw-bold text-dark mt-3 mb-0">{{ user.full_name }}</h5>
+                <span class="badge bg-warning text-dark mt-1">{{ user.role.name if user.role else 'Personnel' }}</span>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="d-flex flex-column gap-2 small">
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted"><i class="bi bi-person me-2"></i>Username</span>
+                    <strong class="text-dark">{{ user.username }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted"><i class="bi bi-envelope me-2"></i>Official Email</span>
+                    <span class="text-dark">{{ user.email }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted"><i class="bi bi-telephone me-2"></i>Contact Phone</span>
+                    <span class="text-dark">{{ user.phone or '-' }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted"><i class="bi bi-person-badge me-2"></i>Badge Number</span>
+                    <span class="badge bg-dark">{{ user.badge_number or 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted"><i class="bi bi-geo-alt me-2"></i>Assigned Station</span>
+                    <span class="text-dark">{{ user.station.name if user.station else 'Central Police HQ' }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted"><i class="bi bi-clock-history me-2"></i>Last Login</span>
+                    <span class="text-success fw-bold">
+                        {{ user.last_login.strftime('%d-%b-%Y %I:%M %p') if user.last_login else 'Current Session' }}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted"><i class="bi bi-shield-check me-2"></i>Account Status</span>
+                    <span class="badge bg-success">Active & Verified</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Login History -->
+        <div class="card table-card shadow-sm border-0 p-3">
+            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-clock me-1 text-primary"></i> Recent Login Sessions</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0" style="font-size: 0.8rem;">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>IP</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in recent_logins %}
+                        <tr>
+                            <td>{{ log.login_time.strftime('%d-%b %H:%M') }}</td>
+                            <td><code>{{ log.ip_address or '127.0.0.1' }}</code></td>
+                            <td><span class="badge bg-success py-0 px-1">{{ log.status_message }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-muted">No session logs</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Change Password & Security Form -->
+    <div class="col-lg-7">
+        <div class="card table-card shadow-sm border-0 p-4">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-key-fill text-primary fs-4"></i>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">Change Account Password</h5>
+                    <p class="text-muted small mb-0">Ensure strong passwords of at least 6 characters with mixed characters.</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.profile') }}">
+                {{ form.hidden_tag() }}
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">Current Password</label>
+                    {{ form.current_password(class="form-control" + (" is-invalid" if form.current_password.errors else ""), placeholder="Enter your current password") }}
+                    {% for error in form.current_password.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">New Password</label>
+                    {{ form.new_password(class="form-control" + (" is-invalid" if form.new_password.errors else ""), placeholder="Enter a new secure password") }}
+                    {% for error in form.new_password.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                    <small class="text-muted">Must be at least 6 characters long.</small>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-secondary">Confirm New Password</label>
+                    {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="Re-type new password") }}
+                    {% for error in form.confirm_password.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                        <i class="bi bi-shield-lock me-1"></i> Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Security Recommendations -->
+        <div class="card bg-light border-0 shadow-sm p-3 mt-3">
+            <div class="d-flex gap-2">
+                <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+                <div class="small text-secondary">
+                    <strong class="text-dark">Official Security Policy:</strong>
+                    Sessions automatically expire after <strong>30 minutes</strong> of inactivity. Accounts are locked for <strong>15 minutes</strong> after 5 consecutive failed login attempts. All changes are logged to the central audit register.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}500 - Internal Server Error{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+    <div class="display-1 fw-bold text-warning mb-2"><i class="bi bi-exclamation-octagon"></i> 500</div>
+    <h3 class="fw-bold text-dark">System Error Occurred</h3>
+    <p class="text-secondary">The database transaction was safely rolled back. System administrators have been notified via audit logging.</p>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary mt-3">
+        <i class="bi bi-arrow-left me-1"></i> Return to Safety
+    </a>
+</div>
+{% endblock %}

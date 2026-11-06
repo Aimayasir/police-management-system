@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Station Armory{% endblock %}
+{% block breadcrumb %}Station Resources / Armory Weapons{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Station Armory & Firearm Inventory</h4>
+        <p class="text-secondary small mb-0">Secure catalog of service weapons, caliber specifications, and storage safe allocation.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.weapons_csv') }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+        </a>
+        {% if current_user.has_role('Admin', 'SHO') %}
+        <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#addWeaponModal">
+            <i class="bi bi-shield-plus"></i> Catalog New Weapon
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card table-card p-3 mb-4">
+    <form method="GET" action="{{ url_for('resources.weapons') }}" class="row g-2 align-items-center">
+        <div class="col-md-9">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search by serial #, weapon type, rack number..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">Search Armory</button>
+            {% if search %}
+            <a href="{{ url_for('resources.weapons') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Weapons Table -->
+<div class="card table-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Serial #</th>
+                    <th>Weapon Type & Caliber</th>
+                    <th>Armory Storage Rack</th>
+                    <th>Ammunition Cap</th>
+                    <th>Condition</th>
+                    <th>Station</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in pagination.items %}
+                <tr>
+                    <td>
+                        <span class="badge bg-dark font-monospace fs-6">{{ w.serial_number }}</span>
+                    </td>
+                    <td>
+                        <div class="fw-semibold small">{{ w.weapon_type }}</div>
+                        <span class="text-muted" style="font-size: 0.72rem;">Caliber: {{ w.caliber }}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            <i class="bi bi-safe me-1 text-primary"></i>Rack {{ w.storage_rack_number }}
+                        </span>
+                    </td>
+                    <td class="small">{{ w.ammunition_capacity }} rounds</td>
+                    <td>
+                        {% set cond_badge = 'success' if w.condition == 'Good' else ('info text-dark' if w.condition == 'Fair' else 'danger') %}
+                        <span class="badge bg-{{ cond_badge }}">{{ w.condition }}</span>
+                    </td>
+                    <td class="small">{{ w.station.name if w.station else 'Central Armory' }}</td>
+                    <td class="text-end">
+                        {% if current_user.has_role('Admin', 'SHO') %}
+                        <button type="button" class="btn btn-sm btn-light border text-danger" title="Decommission" data-bs-toggle="modal" data-bs-target="#deleteWeaponModal{{ w.id }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+
+                        <!-- Soft Delete Confirmation Modal -->
+                        <div class="modal fade text-start" id="deleteWeaponModal{{ w.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Decommission Weapon</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to soft delete weapon with serial <strong>{{ w.serial_number }}</strong> ({{ w.weapon_type }})?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form method="POST" action="{{ url_for('resources.delete_weapon', id=w.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">Yes, Decommission</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No weapons cataloged.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'components/pagination.html' %}
+</div>
+
+<!-- Modal: Catalog Weapon -->
+{% if current_user.has_role('Admin', 'SHO') %}
+<div class="modal fade" id="addWeaponModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="bi bi-shield-plus me-1 text-primary"></i> Catalog Armory Firearm</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('resources.weapons') }}">
+                {{ form.hidden_tag() }}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Station Armory *</label>
+                        {{ form.station_id(class="form-select") }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label small fw-semibold">Armory Serial Number *</label>
+                            {{ form.serial_number(class="form-control", placeholder="e.g. GLK-98124") }}
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label small fw-semibold">Caliber *</label>
+                            {{ form.caliber(class="form-control", placeholder="e.g. 9x19mm") }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Firearm Model *</label>
+                        {{ form.weapon_type(class="form-select") }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Storage Rack / Safe *</label>
+                            {{ form.storage_rack_number(class="form-control", placeholder="e.g. Rack A-12") }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Magazine Capacity</label>
+                            {{ form.ammunition_capacity(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Operating Condition</label>
+                        {{ form.condition(class="form-select") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Save to Armory</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

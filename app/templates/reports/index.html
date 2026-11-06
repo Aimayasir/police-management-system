@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports & Exports{% endblock %}
+{% block breadcrumb %}System Reports / Intelligence & Export Center{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1 text-dark">Station Reporting & Official Document Export Center</h4>
+        <p class="text-secondary small mb-0">Generate court-ready PDF documents and raw data CSV spreadsheets with full audit accountability.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 1. FIR Register Report -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card table-card h-100 p-4 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="stat-icon-wrapper bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">First Information Reports (FIR)</h6>
+                        <span class="text-muted small">Crime Registry Dossier</span>
+                    </div>
+                </div>
+                <p class="text-secondary small mt-3">
+                    Extract complete station FIR registries including incident date, locations, IPC/Penal sections, complainant identities, and cognizable markers.
+                </p>
+            </div>
+            <div class="d-flex gap-2 pt-3 border-top">
+                <a href="{{ url_for('reports.firs_pdf') }}" class="btn btn-outline-danger btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> PDF Report
+                </a>
+                <a href="{{ url_for('reports.firs_csv') }}" class="btn btn-outline-success btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV Data
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Active Cases Report -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card table-card h-100 p-4 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="stat-icon-wrapper bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-briefcase"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Active Investigation Cases</h6>
+                        <span class="text-muted small">Criminal Case Dockets</span>
+                    </div>
+                </div>
+                <p class="text-secondary small mt-3">
+                    Overview of open investigation case files, crime categories, assigned lead investigating officers, trial court jurisdictions, and current status.
+                </p>
+            </div>
+            <div class="d-flex gap-2 pt-3 border-top">
+                <a href="{{ url_for('reports.cases_pdf') }}" class="btn btn-outline-danger btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> PDF Report
+                </a>
+                <a href="{{ url_for('reports.cases_csv') }}" class="btn btn-outline-success btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV Data
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Police Personnel Roster -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card table-card h-100 p-4 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="stat-icon-wrapper bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Police Personnel Directory</h6>
+                        <span class="text-muted small">Staff Strength & Ranks</span>
+                    </div>
+                </div>
+                <p class="text-secondary small mt-3">
+                    Official officer muster roll displaying badge numbers, ranks, functional designations, current duty status, and contact phone numbers.
+                </p>
+            </div>
+            <div class="d-flex gap-2 pt-3 border-top">
+                <a href="{{ url_for('reports.officers_pdf') }}" class="btn btn-outline-danger btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> PDF Roster
+                </a>
+                <a href="{{ url_for('reports.officers_csv') }}" class="btn btn-outline-success btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV Data
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Detainees in Custody -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card table-card h-100 p-4 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="stat-icon-wrapper bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-person-slash"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Lockup Custody Inmates</h6>
+                        <span class="text-muted small">Holding Cells Census</span>
+                    </div>
+                </div>
+                <p class="text-secondary small mt-3">
+                    In-custody detainee census detailing inmate names, ages, holding cell allocations, arrest timestamps, and arresting investigating officers.
+                </p>
+            </div>
+            <div class="d-flex gap-2 pt-3 border-top">
+                <a href="{{ url_for('reports.detainees_pdf') }}" class="btn btn-outline-danger btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> PDF Census
+                </a>
+                <a href="{{ url_for('reports.detainees_csv') }}" class="btn btn-outline-success btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV Data
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Citizen Complaints -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card table-card h-100 p-4 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="stat-icon-wrapper bg-secondary bg-opacity-10 text-secondary">
+                        <i class="bi bi-megaphone"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Citizen Complaints & Petitions</h6>
+                        <span class="text-muted small">Public Desk Grievance Log</span>
+                    </div>
+                </div>
+                <p class="text-secondary small mt-3">
+                    Public grievance log with resolution statuses, citizen contact records, inquiry notes, and priority levels.
+                </p>
+            </div>
+            <div class="d-flex gap-2 pt-3 border-top">
+                <a href="{{ url_for('reports.firs_csv') }}" class="btn btn-outline-success btn-sm flex-grow-1">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Data
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

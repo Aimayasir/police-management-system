@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}FIR - {{ fir.fir_number }}{% endblock %}
+{% block breadcrumb %}FIR Management / View {{ fir.fir_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <!-- Top Action Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+            <a href="{{ url_for('firs.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to Register
+            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('reports.fir_single_pdf', id=fir.id) }}" class="btn btn-outline-danger btn-sm" target="_blank">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Download Official PDF
+                </a>
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i> Print FIR Copy
+                </button>
+                {% if not fir.case or fir.case.is_deleted %}
+                    {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+                    <form method="POST" action="{{ url_for('firs.escalate_to_case', id=fir.id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-briefcase"></i> Escalate to Case File
+                        </button>
+                    </form>
+                    {% endif %}
+                {% else %}
+                    <a href="{{ url_for('cases.view', id=fir.case.id) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-folder2-open"></i> Open Linked Case ({{ fir.case.case_number }})
+                    </a>
+                {% endif %}
+                {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+                <a href="{{ url_for('firs.edit', id=fir.id) }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Official FIR Document Sheet -->
+        <div class="card shadow-sm border p-4 p-md-5 bg-white mb-4">
+            <!-- Header Seal & Title -->
+            <div class="text-center pb-4 mb-4 border-bottom">
+                <div class="text-secondary small fw-bold text-uppercase" style="letter-spacing: 1.5px;">STATE POLICE DEPARTMENT</div>
+                <h4 class="fw-bold text-dark mt-1 mb-0">FIRST INFORMATION REPORT</h4>
+                <div class="text-muted small mt-1">(Under Section 154 of the Code of Criminal Procedure)</div>
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap gap-2">
+                    <span class="badge bg-dark fs-6">{{ fir.fir_number }}</span>
+                    <span class="badge bg-{{ fir.status_rel.color_badge if fir.status_rel else 'secondary' }} fs-6">
+                        Status: {{ fir.status_rel.name if fir.status_rel else 'Registered' }}
+                    </span>
+                    <span class="text-muted small">Registered on: {{ fir.created_at.strftime('%d %B %Y, %H:%M') }}</span>
+                </div>
+            </div>
+
+            <!-- 1. Station & Jurisdictional Details -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-secondary small border-bottom pb-2">1. Station & Jurisdictional Offense</h6>
+                <div class="row g-2 small">
+                    <div class="col-sm-4 text-muted">Police Station:</div>
+                    <div class="col-sm-8 fw-semibold">{{ fir.station.name if fir.station else 'Central Station' }} ({{ fir.station.district }})</div>
+
+                    <div class="col-sm-4 text-muted">Crime Classification:</div>
+                    <div class="col-sm-8 fw-semibold text-danger">
+                        {{ fir.crime_type.name if fir.crime_type else 'Unclassified' }} 
+                        <span class="text-muted fw-normal">({{ fir.crime_type.relevant_sections }})</span>
+                    </div>
+
+                    <div class="col-sm-4 text-muted">Offense Type:</div>
+                    <div class="col-sm-8">
+                        {% if fir.is_cognizable %}
+                        <span class="badge bg-danger">Cognizable (Arrest Without Warrant)</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Non-Cognizable</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-sm-4 text-muted">Assigned Investigating Officer:</div>
+                    <div class="col-sm-8 fw-semibold">
+                        {% if fir.io_officer %}
+                        {{ fir.io_officer.full_name }} (Badge: {{ fir.io_officer.badge_number }}, {{ fir.io_officer.rank.name }})
+                        {% else %}
+                        <span class="text-muted italic">Pending Assignment</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Complainant / Informant Details -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-secondary small border-bottom pb-2">2. Complainant / Informant Details</h6>
+                {% if fir.complainant %}
+                <div class="row g-2 small">
+                    <div class="col-sm-4 text-muted">Full Name:</div>
+                    <div class="col-sm-8 fw-semibold">{{ fir.complainant.full_name }} ({{ fir.complainant.gender }})</div>
+
+                    <div class="col-sm-4 text-muted">Contact Phone:</div>
+                    <div class="col-sm-8">{{ fir.complainant.phone }}</div>
+
+                    <div class="col-sm-4 text-muted">National Identification:</div>
+                    <div class="col-sm-8">{{ fir.complainant.national_id or 'Not Specified' }}</div>
+
+                    <div class="col-sm-4 text-muted">Residential Address:</div>
+                    <div class="col-sm-8">{{ fir.complainant.address }}</div>
+                </div>
+                {% else %}
+                <div class="small text-muted italic">No complainant record attached (Suo Moto action).</div>
+                {% endif %}
+            </div>
+
+            <!-- 3. Occurrence of Offense & Location -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-secondary small border-bottom pb-2">3. Occurrence of Offense & Place</h6>
+                <div class="row g-2 small">
+                    <div class="col-sm-4 text-muted">Date & Time of Incident:</div>
+                    <div class="col-sm-8 fw-semibold">{{ fir.incident_date_time.strftime('%d %B %Y at %I:%M %p') if fir.incident_date_time else 'Unknown' }}</div>
+
+                    <div class="col-sm-4 text-muted">Place of Occurrence:</div>
+                    <div class="col-sm-8 fw-semibold">{{ fir.incident_location }}</div>
+
+                    <div class="col-sm-4 text-muted">Distance / Direction from Station:</div>
+                    <div class="col-sm-8">{{ fir.distance_from_station or 'Not specified' }}</div>
+                </div>
+            </div>
+
+            <!-- 4. First Information Statement (Verbatim) -->
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-secondary small border-bottom pb-2">4. Substantive Statement of Facts</h6>
+                <div class="p-3 bg-light rounded border text-dark lh-base font-monospace small" style="white-space: pre-wrap;">{{ fir.incident_details }}</div>
+            </div>
+
+            <!-- Signatures Block for Print -->
+            <div class="mt-5 pt-4 border-top">
+                <div class="row text-center small text-muted">
+                    <div class="col-6">
+                        <div style="height: 40px;"></div>
+                        <div class="border-top pt-1 fw-semibold">Signature / Thumb Impression of Informant</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="height: 40px;"></div>
+                        <div class="border-top pt-1 fw-semibold">Signature & Seal of Officer in Charge (SHO)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Linked Evidence Items -->
+        <div class="card table-card p-3 mb-4 no-print">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-box-seam me-1 text-primary"></i> Linked Evidence & Seized Articles</h6>
+                {% if current_user.has_role('Admin', 'SHO', 'Inspector') %}
+                <a href="{{ url_for('evidence.create') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus-circle"></i> Log Evidence
+                </a>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Evidence #</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Storage Location</th>
+                            <th>Chain Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for evd in evidences %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('evidence.view', id=evd.id) }}" class="fw-bold text-decoration-none">
+                                    {{ evd.evidence_number }}
+                                </a>
+                            </td>
+                            <td>{{ evd.item_name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ evd.evidence_type.name }}</span></td>
+                            <td>{{ evd.current_storage_location }}</td>
+                            <td><span class="badge bg-info text-dark">{{ evd.chain_of_custody_status }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-3">No physical or digital evidence currently attached to this FIR.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
